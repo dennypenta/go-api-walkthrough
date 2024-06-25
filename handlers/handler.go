@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -8,13 +9,13 @@ import (
 	"github.com/dennypenta/go-api-walkthrough/domain"
 )
 
-//go:generate mockery --name=UserService --dir=. --outpkg=handlers_test --filename=mock_user_service_test.go --output=. --structname MockUserService
+//go:generate mockery --name=UserService --dir=. --outpkg=mocks --filename=mock_user_service.go --output=./mocks --structname MockUserService
 type UserService interface {
-	CreateUser(user domain.User) (domain.User, error)
-	GetUserByID(id string) (domain.User, error)
-	UpdateUser(user domain.User) (domain.User, error)
-	DeleteUser(id string) error
-	ListUsers() ([]domain.User, error)
+	CreateUser(ctx context.Context, user domain.User) (domain.User, error)
+	GetUserByID(ctx context.Context, id string) (domain.User, error)
+	UpdateUser(ctx context.Context, user domain.User) (domain.User, error)
+	DeleteUser(ctx context.Context, id string) error
+	ListUsers(ctx context.Context) ([]domain.User, error)
 }
 
 type Handler struct {
@@ -58,7 +59,7 @@ func (h *Handler) CreateUser(r *http.Request, w http.ResponseWriter) {
 		return
 	}
 
-	user, err := h.service.CreateUser(user)
+	user, err := h.service.CreateUser(r.Context(), user)
 	if err != nil {
 		handleError(err, w)
 		return
@@ -69,7 +70,7 @@ func (h *Handler) CreateUser(r *http.Request, w http.ResponseWriter) {
 
 func (h *Handler) GetUserByID(r *http.Request, w http.ResponseWriter) {
 	id := r.PathValue("id")
-	user, err := h.service.GetUserByID(id)
+	user, err := h.service.GetUserByID(r.Context(), id)
 	if err != nil {
 		handleError(err, w)
 		return
@@ -85,7 +86,7 @@ func (h *Handler) UpdateUser(r *http.Request, w http.ResponseWriter) {
 		return
 	}
 
-	user, err := h.service.UpdateUser(user)
+	user, err := h.service.UpdateUser(r.Context(), user)
 	if err != nil {
 		handleError(err, w)
 		return
@@ -96,7 +97,7 @@ func (h *Handler) UpdateUser(r *http.Request, w http.ResponseWriter) {
 
 func (h *Handler) DeleteUser(r *http.Request, w http.ResponseWriter) {
 	id := r.PathValue("id")
-	if err := h.service.DeleteUser(id); err != nil {
+	if err := h.service.DeleteUser(r.Context(), id); err != nil {
 		handleError(err, w)
 		return
 	}
@@ -105,7 +106,7 @@ func (h *Handler) DeleteUser(r *http.Request, w http.ResponseWriter) {
 }
 
 func (h *Handler) ListUsers(r *http.Request, w http.ResponseWriter) {
-	users, err := h.service.ListUsers()
+	users, err := h.service.ListUsers(r.Context())
 	if err != nil {
 		handleError(err, w)
 		return
