@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/dennypenta/go-api-walkthrough/domain"
 	"github.com/dennypenta/go-api-walkthrough/pkg/log"
@@ -16,16 +17,22 @@ type UserService interface {
 	GetUserByID(ctx context.Context, id string) (domain.User, error)
 	UpdateUser(ctx context.Context, user domain.User) (domain.User, error)
 	DeleteUser(ctx context.Context, id string) error
-	ListUsers(ctx context.Context) ([]domain.User, error)
+	ListUsers(ctx context.Context, filter domain.UserFilter) (domain.PaginatedUserList, error)
 }
 
 type Handler struct {
 	service UserService
+
+	defaultLimit  int
+	defaultOffset int
 }
 
 func NewHandler(service UserService) *Handler {
 	return &Handler{
 		service: service,
+
+		defaultLimit:  10,
+		defaultOffset: 0,
 	}
 }
 
@@ -53,7 +60,7 @@ var (
 	}
 )
 
-func (h *Handler) CreateUser(r *http.Request, w http.ResponseWriter) {
+func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var user domain.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		writeJson(w, ErrFailedMarshal, 400)
@@ -69,7 +76,7 @@ func (h *Handler) CreateUser(r *http.Request, w http.ResponseWriter) {
 	writeJson(w, user, 200)
 }
 
-func (h *Handler) GetUserByID(r *http.Request, w http.ResponseWriter) {
+func (h *Handler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	user, err := h.service.GetUserByID(r.Context(), id)
 	if err != nil {
@@ -80,7 +87,7 @@ func (h *Handler) GetUserByID(r *http.Request, w http.ResponseWriter) {
 	writeJson(w, user, 200)
 }
 
-func (h *Handler) UpdateUser(r *http.Request, w http.ResponseWriter) {
+func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	var user domain.User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		writeJson(w, ErrFailedMarshal, 400)
@@ -96,7 +103,7 @@ func (h *Handler) UpdateUser(r *http.Request, w http.ResponseWriter) {
 	writeJson(w, user, 200)
 }
 
-func (h *Handler) DeleteUser(r *http.Request, w http.ResponseWriter) {
+func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if err := h.service.DeleteUser(r.Context(), id); err != nil {
 		handleError(r.Context(), err, w)
@@ -106,8 +113,31 @@ func (h *Handler) DeleteUser(r *http.Request, w http.ResponseWriter) {
 	w.WriteHeader(200)
 }
 
-func (h *Handler) ListUsers(r *http.Request, w http.ResponseWriter) {
-	users, err := h.service.ListUsers(r.Context())
+func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+	limit := h.defaultLimit
+	offset := h.defaultOffset
+
+	if limitStr != "" {
+		limitV, err := strconv.Atoi(limitStr)
+		// limit can't be 0
+		if err == nil && limitV > 0 {
+			limit = limitV
+		}
+	}
+	if offsetStr != "" {
+		offsetV, err := strconv.Atoi(offsetStr)
+		// offset can't be negative
+		if err == nil && offsetV >= 0 {
+			offset = offsetV
+		}
+	}
+
+	users, err := h.service.ListUsers(r.Context(), domain.UserFilter{
+		Limit:  limit,
+		Offset: offset,
+	})
 	if err != nil {
 		handleError(r.Context(), err, w)
 		return

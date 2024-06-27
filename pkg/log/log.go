@@ -2,6 +2,7 @@ package log
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
@@ -41,6 +42,11 @@ func LogFormatter(groups []string, a slog.Attr) slog.Attr {
 	t := a.Value.Time()
 	a.Value = slog.StringValue(t.Format(time.RFC3339))
 	return a
+}
+
+func NewLogger(w io.Writer) *slog.Logger {
+	logHandler := slog.NewJSONHandler(w, &slog.HandlerOptions{Level: slog.LevelError, ReplaceAttr: LogFormatter})
+	return slog.New(logHandler)
 }
 
 func NewLoggingMiddleware(l *slog.Logger) func(http.Handler) http.Handler {

@@ -88,52 +88,69 @@ func (_m *MockUserRepository) GetUserByID(ctx context.Context, id string) (domai
 	return r0, r1
 }
 
-// ListUsers provides a mock function with given fields: ctx
-func (_m *MockUserRepository) ListUsers(ctx context.Context) ([]domain.User, error) {
-	ret := _m.Called(ctx)
+// ListUsers provides a mock function with given fields: ctx, filter
+func (_m *MockUserRepository) ListUsers(ctx context.Context, filter domain.UserFilter) ([]domain.User, int, error) {
+	ret := _m.Called(ctx, filter)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListUsers")
 	}
 
 	var r0 []domain.User
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]domain.User, error)); ok {
-		return rf(ctx)
+	var r1 int
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, domain.UserFilter) ([]domain.User, int, error)); ok {
+		return rf(ctx, filter)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) []domain.User); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, domain.UserFilter) []domain.User); ok {
+		r0 = rf(ctx, filter)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]domain.User)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context, domain.UserFilter) int); ok {
+		r1 = rf(ctx, filter)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(int)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(context.Context, domain.UserFilter) error); ok {
+		r2 = rf(ctx, filter)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // UpdateUser provides a mock function with given fields: ctx, user
-func (_m *MockUserRepository) UpdateUser(ctx context.Context, user domain.User) error {
+func (_m *MockUserRepository) UpdateUser(ctx context.Context, user domain.User) (domain.User, error) {
 	ret := _m.Called(ctx, user)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateUser")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, domain.User) error); ok {
+	var r0 domain.User
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, domain.User) (domain.User, error)); ok {
+		return rf(ctx, user)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, domain.User) domain.User); ok {
 		r0 = rf(ctx, user)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(domain.User)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, domain.User) error); ok {
+		r1 = rf(ctx, user)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // NewMockUserRepository creates a new instance of MockUserRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

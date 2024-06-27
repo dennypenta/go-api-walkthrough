@@ -89,29 +89,27 @@ func (_m *MockUserService) GetUserByID(ctx context.Context, id string) (domain.U
 	return r0, r1
 }
 
-// ListUsers provides a mock function with given fields: ctx
-func (_m *MockUserService) ListUsers(ctx context.Context) ([]domain.User, error) {
-	ret := _m.Called(ctx)
+// ListUsers provides a mock function with given fields: ctx, filter
+func (_m *MockUserService) ListUsers(ctx context.Context, filter domain.UserFilter) (domain.PaginatedUserList, error) {
+	ret := _m.Called(ctx, filter)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListUsers")
 	}
 
-	var r0 []domain.User
+	var r0 domain.PaginatedUserList
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]domain.User, error)); ok {
-		return rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, domain.UserFilter) (domain.PaginatedUserList, error)); ok {
+		return rf(ctx, filter)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) []domain.User); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, domain.UserFilter) domain.PaginatedUserList); ok {
+		r0 = rf(ctx, filter)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]domain.User)
-		}
+		r0 = ret.Get(0).(domain.PaginatedUserList)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context, domain.UserFilter) error); ok {
+		r1 = rf(ctx, filter)
 	} else {
 		r1 = ret.Error(1)
 	}

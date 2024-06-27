@@ -115,29 +115,45 @@ func (r *UserRepository) DeleteUser(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *UserRepository) ListUsers(ctx context.Context) ([]domain.User, error) {
-	var users []domain.User
-	query, args, err := squirrel.Select("id", "username").
-		Where(squirrel.Eq{"deletedAt": nil}).
+func (r *UserRepository) ListUsers(ctx context.Context, filter domain.UserFilter) ([]domain.User, int, error) {
+	var count int
+	query, args, err := squirrel.Select("COUNT(id)").
 		From("users").
+		Where(squirrel.Eq{"deletedAt": nil}).
 		ToSql()
 	if err != nil {
-		return users, fmt.Errorf("ListUsers: failed to build query: %w", err)
+		return nil, 0, fmt.Errorf("ListUsers: failed to build count query: %w", err)
+	}
+	err = r.db.QueryRowxContext(ctx, query, args...).Scan(&count)
+	if err != nil {
+		return nil, 0, fmt.Errorf("ListUsers: failed to count users: %w", err)
+	}
+
+	var users []domain.User
+	query, args, err = squirrel.Select("id", "username").
+		Where(squirrel.Eq{"deletedAt": nil}).
+		From("users").
+		Limit(uint64(filter.Limit)).
+		Offset(uint64(filter.Offset)).
+		OrderBy("createdAt DESC").
+		ToSql()
+	if err != nil {
+		return users, 0, fmt.Errorf("ListUsers: failed to build query: %w", err)
 	}
 
 	rows, err := r.db.QueryxContext(ctx, query, args...)
 	if err != nil {
-		return users, fmt.Errorf("ListUsers: failed to list users: %w", err)
+		return users, 0, fmt.Errorf("ListUsers: failed to list users: %w", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		var user domain.User
 		if err := rows.Scan(&user.ID, &user.Username); err != nil {
-			return users, fmt.Errorf("ListUsers: failed to scan user: %w", err)
+			return users, 0, fmt.Errorf("ListUsers: failed to scan user: %w", err)
 		}
 		users = append(users, user)
 	}
 
-	return users, nil
+	return users, count, nil
 }

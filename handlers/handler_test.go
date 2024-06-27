@@ -2,13 +2,16 @@ package handlers_test
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
+	"io"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/dennypenta/go-api-walkthrough/domain"
 	"github.com/dennypenta/go-api-walkthrough/handlers"
 	"github.com/dennypenta/go-api-walkthrough/handlers/mocks"
+	"github.com/dennypenta/go-api-walkthrough/pkg/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -67,11 +70,14 @@ func TestCreateUserHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			m := mocks.NewMockUserService(t)
 			tt.setupMocks(m)
+			l := log.NewLogger(io.Discard)
+			ctx := log.LoggerToContext(context.Background(), l)
 
 			h := handlers.NewHandler(m)
 			req := httptest.NewRequest("POST", "/users", bytes.NewBuffer(tt.reqBody))
+			req = req.WithContext(ctx)
 			w := httptest.NewRecorder()
-			h.CreateUser(req, w)
+			h.CreateUser(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
 			assert.JSONEq(t, tt.expectedResp, w.Body.String())

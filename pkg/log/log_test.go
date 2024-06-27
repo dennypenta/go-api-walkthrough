@@ -3,7 +3,6 @@ package log
 import (
 	"bytes"
 	"encoding/json"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -81,8 +80,7 @@ func TestLog(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := bytes.NewBuffer(nil)
-			logHandler := slog.NewJSONHandler(buf, &slog.HandlerOptions{Level: slog.LevelError, ReplaceAttr: LogFormatter})
-			l := slog.New(logHandler)
+			l := NewLogger(buf)
 			m := NewLoggingMiddleware(l)
 			h := m(tt.handler)
 
