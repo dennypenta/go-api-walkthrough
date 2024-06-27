@@ -67,7 +67,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, id string) (domain.Use
 
 func (r *UserRepository) UpdateUser(ctx context.Context, user domain.User) (domain.User, error) {
 	query, args, err := squirrel.Update("users").
-		Set("username", user.Username).
+		Set("username", user.Username).Set("updatedAt", squirrel.Expr("now()")).
 		Where(squirrel.Eq{"id": user.ID}).
 		ToSql()
 	if err != nil {
@@ -117,20 +117,8 @@ func (r *UserRepository) DeleteUser(ctx context.Context, id string) error {
 
 func (r *UserRepository) ListUsers(ctx context.Context, filter domain.UserFilter) ([]domain.User, int, error) {
 	var count int
-	query, args, err := squirrel.Select("COUNT(id)").
-		From("users").
-		Where(squirrel.Eq{"deletedAt": nil}).
-		ToSql()
-	if err != nil {
-		return nil, 0, fmt.Errorf("ListUsers: failed to build count query: %w", err)
-	}
-	err = r.db.QueryRowxContext(ctx, query, args...).Scan(&count)
-	if err != nil {
-		return nil, 0, fmt.Errorf("ListUsers: failed to count users: %w", err)
-	}
-
 	var users []domain.User
-	query, args, err = squirrel.Select("id", "username").
+	query, args, err := squirrel.Select("id", "username", "count(id)").
 		Where(squirrel.Eq{"deletedAt": nil}).
 		From("users").
 		Limit(uint64(filter.Limit)).
@@ -149,7 +137,7 @@ func (r *UserRepository) ListUsers(ctx context.Context, filter domain.UserFilter
 
 	for rows.Next() {
 		var user domain.User
-		if err := rows.Scan(&user.ID, &user.Username); err != nil {
+		if err := rows.Scan(&user.ID, &user.Username, &count); err != nil {
 			return users, 0, fmt.Errorf("ListUsers: failed to scan user: %w", err)
 		}
 		users = append(users, user)

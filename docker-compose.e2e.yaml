@@ -1,0 +1,35 @@
+services:
+  service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - DEBUG=true
+    ports:
+      - '8080:8080'
+      - '40000:40000'
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_PTRACE
+    command: /dlv --listen=:40000 --continue --headless=true --api-version=2 --accept-multiclient exec /app/server
+    env_file:
+      e2e.env
+    depends_on:
+      downstream:
+        condition: service_started
+
+  postgres:
+    image: postgres:16.3-alpine3.20
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres:/data/postgres
+    environment:
+      POSTGRES_USER: pguser
+      POSTGRES_PASSWORD: pgpass
+      POSTGRES_DB: main
+    restart: unless-stopped
+
+volumes:
+    postgres:
