@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/dennypenta/go-api-walkthrough/domain"
+	"github.com/dennypenta/go-api-walkthrough/pkg/log"
 )
 
 //go:generate mockery --name=UserService --dir=. --outpkg=mocks --filename=mock_user_service.go --output=./mocks --structname MockUserService
@@ -61,7 +62,7 @@ func (h *Handler) CreateUser(r *http.Request, w http.ResponseWriter) {
 
 	user, err := h.service.CreateUser(r.Context(), user)
 	if err != nil {
-		handleError(err, w)
+		handleError(r.Context(), err, w)
 		return
 	}
 
@@ -72,7 +73,7 @@ func (h *Handler) GetUserByID(r *http.Request, w http.ResponseWriter) {
 	id := r.PathValue("id")
 	user, err := h.service.GetUserByID(r.Context(), id)
 	if err != nil {
-		handleError(err, w)
+		handleError(r.Context(), err, w)
 		return
 	}
 
@@ -88,7 +89,7 @@ func (h *Handler) UpdateUser(r *http.Request, w http.ResponseWriter) {
 
 	user, err := h.service.UpdateUser(r.Context(), user)
 	if err != nil {
-		handleError(err, w)
+		handleError(r.Context(), err, w)
 		return
 	}
 
@@ -98,7 +99,7 @@ func (h *Handler) UpdateUser(r *http.Request, w http.ResponseWriter) {
 func (h *Handler) DeleteUser(r *http.Request, w http.ResponseWriter) {
 	id := r.PathValue("id")
 	if err := h.service.DeleteUser(r.Context(), id); err != nil {
-		handleError(err, w)
+		handleError(r.Context(), err, w)
 		return
 	}
 
@@ -108,7 +109,7 @@ func (h *Handler) DeleteUser(r *http.Request, w http.ResponseWriter) {
 func (h *Handler) ListUsers(r *http.Request, w http.ResponseWriter) {
 	users, err := h.service.ListUsers(r.Context())
 	if err != nil {
-		handleError(err, w)
+		handleError(r.Context(), err, w)
 		return
 	}
 
@@ -123,7 +124,9 @@ func writeJson(w http.ResponseWriter, v interface{}, status int) {
 	}
 }
 
-func handleError(err error, w http.ResponseWriter) {
+func handleError(ctx context.Context, err error, w http.ResponseWriter) {
+	l := log.LoggerFromContext(ctx)
+
 	switch {
 	case errors.Is(err, domain.ErrUserExists):
 		writeJson(w, ErrUserExists, 400)
@@ -133,6 +136,7 @@ func handleError(err error, w http.ResponseWriter) {
 		writeJson(w, ErrInvalidUsername, 400)
 
 	default:
+		l.ErrorContext(ctx, "unhandled error", "err", err)
 		writeJson(w, ErrUnknown, 500)
 	}
 }
