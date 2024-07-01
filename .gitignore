@@ -1,0 +1,6 @@
+# tests
+coverage.out
+
+# IDE
+.vscode
+.idea

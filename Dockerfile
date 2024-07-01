@@ -25,6 +25,7 @@ WORKDIR /app
 
 COPY --from=builder /app/server server
 COPY --from=builder /go/bin/dlv* /
+COPY migrations migrations
 
 RUN chmod +x /app/server
 

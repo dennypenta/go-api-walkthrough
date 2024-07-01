@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"runtime/debug"
 	"time"
 
@@ -13,21 +14,35 @@ import (
 
 type response struct {
 	http.ResponseWriter
-	status int
+	status  int
+	payload []byte
 }
 
 func (r *response) WriteHeader(statusCode int) {
 	r.status = statusCode
 }
 
+func (r *response) Write(p []byte) (n int, err error) {
+	r.payload = make([]byte, len(p))
+	return copy(r.payload, p), nil
+}
+
 func (r *response) Flush() {
 	r.ResponseWriter.WriteHeader(r.status)
+	r.ResponseWriter.Write(r.payload)
 }
 
 type logContextKey struct{}
 
+var DefaultLogWriter = os.Stderr
+
 func LoggerFromContext(ctx context.Context) *slog.Logger {
-	return ctx.Value(logContextKey{}).(*slog.Logger)
+	v := ctx.Value(logContextKey{})
+	l, ok := v.(*slog.Logger)
+	if !ok {
+		return NewLogger(DefaultLogWriter)
+	}
+	return l
 }
 
 func LoggerToContext(ctx context.Context, l *slog.Logger) context.Context {
@@ -56,7 +71,7 @@ func NewLoggingMiddleware(l *slog.Logger) func(http.Handler) http.Handler {
 			traceID := uuid.NewString()
 			logger := l.With("service", "userService", "traceID", traceID)
 
-			resp := &response{w, http.StatusOK}
+			resp := &response{w, http.StatusOK, nil}
 			defer resp.Flush()
 
 			defer func() {
@@ -69,6 +84,7 @@ func NewLoggingMiddleware(l *slog.Logger) func(http.Handler) http.Handler {
 						"stack", string(debug.Stack()),
 					)
 					resp.WriteHeader(http.StatusInternalServerError)
+					resp.Write([]byte("internal server error"))
 				}
 			}()
 

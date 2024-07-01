@@ -8,7 +8,6 @@ import (
 
 var (
 	ErrUserNotFound    = errors.New("user not found")
-	ErrUserExists      = errors.New("username already exists")
 	ErrInvalidUsername = errors.New("invalid username")
 )
 

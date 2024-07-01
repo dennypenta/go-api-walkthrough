@@ -15,16 +15,13 @@ services:
     command: /dlv --listen=:40000 --continue --headless=true --api-version=2 --accept-multiclient exec /app/server
     env_file:
       e2e.env
-    depends_on:
-      downstream:
-        condition: service_started
 
   postgres:
     image: postgres:16.3-alpine3.20
     ports:
       - 5432:5432
     volumes:
-      - postgres:/data/postgres
+      - postgres-e2e:/var/lib/postgresql/data
     environment:
       POSTGRES_USER: pguser
       POSTGRES_PASSWORD: pgpass
@@ -32,4 +29,4 @@ services:
     restart: unless-stopped
 
 volumes:
-    postgres:
+  postgres-e2e:

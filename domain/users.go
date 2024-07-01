@@ -35,6 +35,9 @@ func (s *UserService) GetUserByID(ctx context.Context, id string) (User, error) 
 }
 
 func (s *UserService) UpdateUser(ctx context.Context, user User) (User, error) {
+	if err := user.Validate(); err != nil {
+		return user, err
+	}
 	return s.repo.UpdateUser(ctx, user)
 }
 

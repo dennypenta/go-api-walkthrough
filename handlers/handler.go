@@ -55,9 +55,6 @@ var (
 	ErrUserNotFound = Error{
 		Code: "user_not_found",
 	}
-	ErrUserExists = Error{
-		Code: "user_exists",
-	}
 )
 
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
@@ -93,6 +90,7 @@ func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		writeJson(w, ErrFailedMarshal, 400)
 		return
 	}
+	user.ID = r.PathValue("id")
 
 	user, err := h.service.UpdateUser(r.Context(), user)
 	if err != nil {
@@ -158,8 +156,6 @@ func handleError(ctx context.Context, err error, w http.ResponseWriter) {
 	l := log.LoggerFromContext(ctx)
 
 	switch {
-	case errors.Is(err, domain.ErrUserExists):
-		writeJson(w, ErrUserExists, 400)
 	case errors.Is(err, domain.ErrUserNotFound):
 		writeJson(w, ErrUserNotFound, 400)
 	case errors.Is(err, domain.ErrInvalidUsername):

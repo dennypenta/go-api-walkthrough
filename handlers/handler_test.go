@@ -50,15 +50,6 @@ func TestCreateUserHandler(t *testing.T) {
 			expectedStatus: 400,
 		},
 		{
-			name:    "user exists",
-			reqBody: []byte(`{"username": "test"}`),
-			setupMocks: func(m *mocks.MockUserService) {
-				m.On("CreateUser", mock.Anything, domain.User{Username: "test"}).Return(domain.User{}, domain.ErrUserExists)
-			},
-			expectedResp:   `{"code":"user_exists"}`,
-			expectedStatus: 400,
-		},
-		{
 			name:    "failed marshal",
 			reqBody: []byte(`{`),
 			setupMocks: func(m *mocks.MockUserService) {

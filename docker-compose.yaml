@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16.3-alpine3.20
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: pguser
+      POSTGRES_PASSWORD: pgpass
+      POSTGRES_DB: main
+    restart: unless-stopped
+
+volumes:
+    postgres:

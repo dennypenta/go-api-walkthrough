@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/dennypenta/go-api-walkthrough/assembly"
+	"github.com/golang-migrate/migrate/v4"
 	_ "go.uber.org/automaxprocs"
 	"golang.org/x/sync/errgroup"
 )
@@ -28,8 +29,9 @@ func main() {
 		log.Fatalln("failed to create app:", err)
 	}
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	if err := app.Migrate.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		log.Fatalln("failed to run migrations:", err)
+	}
 
 	server := &http.Server{Addr: ":" + conf.HttpPort, Handler: app.Mux}
 
@@ -41,10 +43,13 @@ func main() {
 		cancel()
 
 		app.Log.InfoContext(ctx, "shutting down server")
-		app.Close(ctx)
-		return server.Shutdown(context.Background())
+		if err := server.Shutdown(ctx); err != nil {
+			app.Log.ErrorContext(ctx, "failed to shutdown server", "err", err)
+		}
+		return app.Close(ctx)
 	})
 	g.Go(func() error {
+		app.Log.InfoContext(ctx, "server has been started", "port", conf.HttpPort)
 		if err := server.ListenAndServe(); err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
 				app.Log.InfoContext(ctx, "server closed")
@@ -57,5 +62,10 @@ func main() {
 
 		return nil
 	})
-	g.Wait()
+	if err := g.Wait(); err != nil {
+		app.Log.ErrorContext(ctx, "server stopped", "err", err)
+		os.Exit(1)
+	}
+
+	app.Log.InfoContext(ctx, "server stopped")
 }
