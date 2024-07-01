@@ -31,6 +31,10 @@ It includes:
 - data retreiving from the given data source
 - necessary calculations around the given data
 
+It's important to note all the models are defined as values, not pointers.
+The pointers should be used only if we don't want to copy the object, it's useful for holding database connections, mutexes (https://gobyexample.com/mutexes) and any other state.
+It will not improve the application performance since the runtime will spend more time on looking it at the heap for accessin and GCing.
+
 ##### Data layer
 
 `repository` folder contains data layer of the ap. It's responsible for 
@@ -45,7 +49,7 @@ It's a folder responsible for composing all the dependencies and providing the c
 
 ##### pkg
 
-The folder keeps all the internal dependencies. They can potentially be moved to another repo/package to serve more applications. In our particular example we keep a logger there, middleware to log the requests and inject a logger into a context instance for attaching the given request to all the logged messages.
+The folder keeps all the internal dependencies. They can potentially be moved to another repo/package to serve more applications. In our particular example we keep a logger there, middleware to log the requests and inject a logger into a context instance for attaching the given request (trace-id) to all the logged messages.
 
 ### The other parts of the codebase
 
@@ -70,9 +74,6 @@ The users table is very simple. However, a few details I want look closer.
 The `deletedAt` column is there might look as antipattern. GDPR makes it more complicated and sometimes we need a background job to catch "soft-deleted" rows, collect the archive, send to a defined direction and then completely remove the data saving the anonimyzed part of it for analytics or others goals.
 
 There are also columns such as `updatedAt` and `createdAt` that are never exposed to API until the requirement is writtend down.
-
-Currently Postgres doesn't support unique keys on hash indexes, therefore even uuid Primary Key has a btree index.
-The reading a single item operation performance might be slightly improved creating additional hash index on the Primary Key.
 
 ### Points of improvements
 
@@ -136,3 +137,17 @@ https://go.dev/blog/integration-test-coverage
 
 ##### Database schema
 The datatabase schema should be extended to handle contact data, authentication methods (if many or password hash as another solution), and sign in identity unique constraint.
+
+##### Api spec
+The api spec (openapi/swagger) must be defined for the service.
+We can write this document manually.
+It's good to integrate lazy tools such as http://huma.rocks in order to generate the api spec and never write it manually (register fake web server and expose only openapi page from it).
+
+### Scalability
+The application itself has no much resource intencive load, it does IO operations providing access to the database. Therefore, I anticipate most of the bottleneck on the database size, there are many well known practices we can apply in order to serve more users/requests:
+- define the most complex queries and create a specific index for it (for example, on `createdAt` if that's the most frequent data range we query); currently Postgres doesn't support unique keys on hash indexes, therefore even uuid Primary Key has a btree index, so we could add hash index on the `id` field, as a result the reading a single item operation performance might be slightly improved
+- setup cache instances (lru,lfu) such as redis, it's even better to setup for multi-region application in order to put the data closer to the users, as a result even more reducing latency
+- add more database replicas, it's important not to use statement-based replica (should be deprecated for most of the database) since we use non-deterministic queries such as calling `now()` funciton in the database
+- sharding the database, the easiest way to shard by region; if the app is write-heavy we could create partitions based on createdAt timestamp
+
+After all, creating an application replicas could add more network throughput

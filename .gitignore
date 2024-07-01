@@ -1,5 +1,6 @@
 # tests
-coverage.out
+# coverage.out should be in gitignore, but we put it in the repo for demonstration puropses
+# coverage.out
 
 # IDE
 .vscode
