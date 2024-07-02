@@ -43,6 +43,14 @@ It will not improve the application performance since the runtime will spend mor
 - handling data errors and present them as domain errors
 in a nutshell it must implement the interface the domain layer expects, not the other way around.
 
+In this implementation is used sqlx and squirrel.
+sqlx provides more flexibility working with sql rows.
+sqlx can be replaced to pgx + pq to utilize required postgres data types.
+squirrel helps to build sql queries and gives an option to reuse the parts of the statements and covers security side (such as sql injection vulnerability).
+All those tools can be replaced with Gorm. However, I recommend using gorm only on pet projects to discover the tool well enough.
+Go doesn't provide flexible meta programming and write reflection, so it's not possible to bring similar experience as we saw in django orm or rails active records with lazy execution.
+Therefore it narrows flexibility and makes executing raw sql queries on complex aggregations around joined tables.
+
 ##### assembly
 
 It's a folder responsible for composing all the dependencies and providing the core components for the process such as web service, logger, migration launcher and so on.
@@ -113,7 +121,6 @@ The pagination is implemented in the simplest way, getting `limit` and `offset` 
 The pages related data is queries in the same query in order to keep the result consistent.
 We can separate those queries either fetching the data in the same transaction or being ready to get inconsistent data.
 
-
 There are a few more options available:
 - accepting `page` and `size` instead, it removed the calculation `offset` calculation from a client side with very little disadvantage.
 - cursor pagination, it makes it strongly coupled to a database
@@ -132,10 +139,12 @@ It takes a couple more steps to prepare adding a database fixtures (especially f
 Also, it's good to compare the test results to embedded json fixtures instead of domain models. Having an issue in the marshalling or the model definition will not detect the issue.
 
 ##### Test coverage
+
 Since Go1.20 it supports coverage for the integration tests as well:
 https://go.dev/blog/integration-test-coverage
 
 ##### Database schema
+
 The datatabase schema should be extended to handle contact data, authentication methods (if many or password hash as another solution), and sign in identity unique constraint.
 
 ##### Api spec
@@ -144,8 +153,9 @@ We can write this document manually.
 It's good to integrate lazy tools such as http://huma.rocks in order to generate the api spec and never write it manually (register fake web server and expose only openapi page from it).
 
 ### Scalability
+
 The application itself has no much resource intencive load, it does IO operations providing access to the database. Therefore, I anticipate most of the bottleneck on the database size, there are many well known practices we can apply in order to serve more users/requests:
-- define the most complex queries and create a specific index for it (for example, on `createdAt` if that's the most frequent data range we query); currently Postgres doesn't support unique keys on hash indexes, therefore even uuid Primary Key has a btree index, so we could add hash index on the `id` field, as a result the reading a single item operation performance might be slightly improved
+- define the most complex queries and create a specific index for it (for example, a composite index on `(deletedAt, createdAt)` if that's the most frequent data range we query); currently Postgres doesn't support unique keys on hash indexes, therefore even uuid Primary Key has a btree index, so we could add hash index on the `id` field, as a result the reading a single item operation performance might be slightly improved
 - setup cache instances (lru,lfu) such as redis, it's even better to setup for multi-region application in order to put the data closer to the users, as a result even more reducing latency
 - add more database replicas, it's important not to use statement-based replica (should be deprecated for most of the database) since we use non-deterministic queries such as calling `now()` funciton in the database
 - sharding the database, the easiest way to shard by region; if the app is write-heavy we could create partitions based on createdAt timestamp
