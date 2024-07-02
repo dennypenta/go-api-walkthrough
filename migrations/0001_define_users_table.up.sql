@@ -10,3 +10,4 @@ CREATE TABLE IF NOT EXISTS users (
     deletedAt TIMESTAMP
 );
  
+CREATE INDEX idx_users_deletedat_createdat ON users (deletedAt, createdAt DESC);
