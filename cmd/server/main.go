@@ -10,7 +10,10 @@ import (
 	"syscall"
 
 	"github.com/dennypenta/go-api-walkthrough/assembly"
+	"github.com/dennypenta/go-api-walkthrough/pkg/metrics"
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	_ "go.uber.org/automaxprocs"
 	"golang.org/x/sync/errgroup"
 )
@@ -33,7 +36,15 @@ func main() {
 		log.Fatalln("failed to run migrations:", err)
 	}
 
-	server := &http.Server{Addr: ":" + conf.HttpPort, Handler: app.Mux}
+	reg := prometheus.NewRegistry()
+	metricsObj := metrics.NewMetrics(reg)
+	metricsHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{})
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle("/metrics", metricsHandler)
+	metircsServer := &http.Server{Addr: ":8081", Handler: metricsMux}
+	metricsMiddleware := metrics.NewMetricsMiddleware(metricsObj)
+
+	server := &http.Server{Addr: ":" + conf.HttpPort, Handler: metricsMiddleware(app.Mux)}
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
@@ -55,6 +66,20 @@ func main() {
 				app.Log.InfoContext(ctx, "server closed")
 			} else {
 				app.Log.ErrorContext(ctx, "server error", "err", err)
+			}
+
+			return err
+		}
+
+		return nil
+	})
+	g.Go(func() error {
+		app.Log.InfoContext(ctx, "metrics server has been started", "port", "8081")
+		if err := metircsServer.ListenAndServe(); err != nil {
+			if errors.Is(err, http.ErrServerClosed) {
+				app.Log.InfoContext(ctx, "metrics server closed")
+			} else {
+				app.Log.ErrorContext(ctx, "metrics server error", "err", err)
 			}
 
 			return err
