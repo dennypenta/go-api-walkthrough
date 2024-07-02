@@ -40,7 +40,8 @@ func LoggerFromContext(ctx context.Context) *slog.Logger {
 	v := ctx.Value(logContextKey{})
 	l, ok := v.(*slog.Logger)
 	if !ok {
-		return NewLogger(DefaultLogWriter)
+		l := NewLogger(DefaultLogWriter, slog.LevelInfo)
+		l.Info("no logger found in context")
 	}
 	return l
 }
@@ -61,8 +62,8 @@ func LogFormatter(groups []string, a slog.Attr) slog.Attr {
 	return a
 }
 
-func NewLogger(w io.Writer) *slog.Logger {
-	logHandler := slog.NewJSONHandler(w, &slog.HandlerOptions{Level: slog.LevelDebug, ReplaceAttr: LogFormatter})
+func NewLogger(w io.Writer, level slog.Level) *slog.Logger {
+	logHandler := slog.NewJSONHandler(w, &slog.HandlerOptions{Level: level, ReplaceAttr: LogFormatter})
 	return slog.New(logHandler)
 }
 

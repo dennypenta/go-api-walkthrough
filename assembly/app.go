@@ -77,7 +77,7 @@ func NewApp(conf Config) (*App, error) {
 
 	// https://www.gnu.org/software/libc/manual/html_node/Standard-Streams.html
 	// errors and diagnostic messages should go to stderr
-	l := log.NewLogger(os.Stderr)
+	l := log.NewLogger(os.Stderr, conf.LogLevel)
 	loggingMiddleware := log.NewLoggingMiddleware(l)
 	return &App{
 		Mux:     loggingMiddleware(mux),
