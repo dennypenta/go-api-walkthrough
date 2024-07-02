@@ -54,13 +54,15 @@ func LogFormatter(groups []string, a slog.Attr) slog.Attr {
 		return a
 	}
 
-	t := a.Value.Time()
-	a.Value = slog.StringValue(t.Format(time.RFC3339))
+	if a.Value.Kind() == slog.KindTime {
+		t := a.Value.Time()
+		a.Value = slog.StringValue(t.Format(time.RFC3339))
+	}
 	return a
 }
 
 func NewLogger(w io.Writer) *slog.Logger {
-	logHandler := slog.NewJSONHandler(w, &slog.HandlerOptions{Level: slog.LevelError, ReplaceAttr: LogFormatter})
+	logHandler := slog.NewJSONHandler(w, &slog.HandlerOptions{Level: slog.LevelDebug, ReplaceAttr: LogFormatter})
 	return slog.New(logHandler)
 }
 
@@ -104,7 +106,16 @@ func NewLoggingMiddleware(l *slog.Logger) func(http.Handler) http.Handler {
 			// soon we can log the url pattern and easy to match it to our observability toolings
 			// https://github.com/golang/go/issues/66405
 			// but now let's enjoy RequestURI
-			logger.DebugContext(
+			var logFunc func(context.Context, string, ...any)
+			if resp.status >= 500 {
+				logFunc = logger.ErrorContext
+			} else if resp.status >= 400 {
+				logFunc = logger.InfoContext
+			} else {
+				logFunc = logger.DebugContext
+			}
+
+			logFunc(
 				r.Context(), "request completed",
 				"duration", duration.String(),
 				"time", end.Format(time.RFC3339),
