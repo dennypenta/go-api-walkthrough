@@ -57,6 +57,10 @@ func main() {
 		if err := server.Shutdown(ctx); err != nil {
 			app.Log.ErrorContext(ctx, "failed to shutdown server", "err", err)
 		}
+		// make sure the metrics are collected
+		if err := metircsServer.Shutdown(ctx); err != nil {
+			app.Log.ErrorContext(ctx, "failed to shutdown metrics server", "err", err)
+		}
 		return app.Close(ctx)
 	})
 	g.Go(func() error {
