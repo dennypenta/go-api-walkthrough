@@ -1,9 +1,17 @@
+### What is it
+
+This is a simple web service that services as an example how a regular go web app could be structured if you don't know how to approach your first service.
+
+There are 2 main ideas in the demo of this project.
+1. Regular-architecture or "clean architecture" is presented here. The idea to separate the interface the app provides (http api), business logic (domain layer) and data access (database, repository)
+2. The most important lesson Bob gave us "Good architecture allows major architectural decisions to be deferred". So you can find something missed is there, but it's not an issue to extend the project.
+
 ### How to
 
 ##### Start
 
 - `make install` to install the dependencies (lint, migration) [optional]
-- `docker compose up` to start postgres locally
+- `docker-compose up` to start postgres locally
 - apply env variables (depends on your IDE) from `local.env` file
 - [optional] override MIGEATRIONS_DIR folder since my IDE run is from "projectDir/cmd/server"
 - start the app `go run cmd/server/main.go`
@@ -24,6 +32,11 @@ It includes:
 - handling domain layer errors and represent them to the clients
 - catching unexpected behaviour and log such events
 
+It does't call validaiton, none of the behaviour appears here.
+The service interface contains all the methods. There is a pattern as "use case" that makes us to define `a single method interface`. 
+I don't recommend using it at the beginnins since it will raise more questions.
+As soon as you understand you need to segrate the part of the interface - the app will let you know.
+
 ##### Domain layer
 
 `domain` folder contains domain layer of the app. It's responsible for:
@@ -31,7 +44,7 @@ It includes:
 - data retreiving from the given data source
 - necessary calculations around the given data
 
-It's important to note all the models are defined as values, not pointers.
+All the models are defined as values, not pointers.
 The pointers should be used only if we don't want to copy the object, it's useful for holding database connections, mutexes (https://gobyexample.com/mutexes) and any other state.
 It will not improve the application performance since the runtime will spend more time on looking it at the heap for accessin and GCing.
 
@@ -41,7 +54,7 @@ It will not improve the application performance since the runtime will spend mor
 - retreiving data from the database
 - mapping the database rows to the domain data models
 - handling data errors and present them as domain errors
-in a nutshell it must implement the interface the domain layer expects, not the other way around.
+in a nutshell it must implement the interface the domain layer expects, not the other way around, so it exposes the domain models and domain errors and should never return sql error, such error must be read as unexpeted behavriour, as a result http 500 code must be returned.
 
 In this implementation is used sqlx and squirrel.
 sqlx provides more flexibility working with sql rows.
@@ -146,18 +159,3 @@ https://go.dev/blog/integration-test-coverage
 ##### Database schema
 
 The datatabase schema should be extended to handle contact data, authentication methods (if many or password hash as another solution), and sign in identity unique constraint.
-
-##### Api spec
-The api spec (openapi/swagger) must be defined for the service.
-We can write this document manually.
-It's good to integrate lazy tools such as http://huma.rocks in order to generate the api spec and never write it manually (register fake web server and expose only openapi page from it).
-
-### Scalability
-
-The application itself has no much resource intencive load, it does IO operations providing access to the database. Therefore, I anticipate most of the bottleneck on the database size, there are many well known practices we can apply in order to serve more users/requests:
-- define the most complex queries and create a specific index for it (for example, a composite index on `(deletedAt, createdAt)` if that's the most frequent data range we query); currently Postgres doesn't support unique keys on hash indexes, therefore even uuid Primary Key has a btree index, so we could add hash index on the `id` field, as a result the reading a single item operation performance might be slightly improved
-- setup cache instances (lru,lfu) such as redis, it's even better to setup for multi-region application in order to put the data closer to the users, as a result even more reducing latency
-- add more database replicas, it's important not to use statement-based replica (should be deprecated for most of the database) since we use non-deterministic queries such as calling `now()` funciton in the database
-- sharding the database, the easiest way to shard by region; if the app is write-heavy we could create partitions based on createdAt timestamp
-
-After all, creating an application replicas could add more network throughput

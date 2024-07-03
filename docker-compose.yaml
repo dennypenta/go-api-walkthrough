@@ -11,5 +11,42 @@ services:
       POSTGRES_DB: main
     restart: unless-stopped
 
+  service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - DEBUG=true
+    ports:
+      - '8080:8080'
+      - '8081:8081'
+      - '40000:40000'
+    security_opt:
+      - seccomp:unconfined
+    cap_add:
+      - SYS_PTRACE
+    command: /dlv --listen=:40000 --continue --headless=true --api-version=2 --accept-multiclient exec /app/server
+    env_file:
+      e2e.env
+
+  prometheus:
+    image: prom/prometheus:v2.40.4
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:9.3.0
+    ports:
+      - 3000:3000
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./grafana/datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml
+      - grafana:/var/lib/grafana
+
 volumes:
     postgres:
+    grafana:
